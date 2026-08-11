@@ -1,61 +1,38 @@
 <?php
 
-/*
- * MongoDB database connection
- */
-
 require_once __DIR__ . '/../vendor/autoload.php';
+
+$mongoUri = getenv('MONGODB_URI');
+
+if (!$mongoUri) {
+    die('MONGODB_URI is not configured.');
+}
 
 try {
 
-    /*
-     * Get MongoDB connection string from Render environment variable.
-     *
-     * In Render, create:
-     *
-     * MONGODB_URI = your MongoDB connection string
-     *
-     * Do NOT put your real password directly in this file.
-     */
+    $client = new MongoDB\Client($mongoUri);
 
-    $mongoUri = getenv('MONGODB_URI');
-
-    if (!$mongoUri) {
-        throw new Exception(
-            'MONGODB_URI environment variable is not configured.'
-        );
-    }
+    $db = $client->selectDatabase('hostel_management');
 
     /*
-     * Create MongoDB client.
+     * Collections used by the application.
      */
-    $mongoClient = new MongoDB\Client($mongoUri);
+    $users = $db->selectCollection('users');
 
-    /*
-     * Select database.
-     */
-    $database = $mongoClient->selectDatabase('hostel_management');
+    $students = $db->selectCollection('students');
 
-    /*
-     * Collections.
-     */
-    $users = $database->selectCollection('users');
+    $rooms = $db->selectCollection('rooms');
 
-    $students = $database->selectCollection('students');
+    $complaints = $db->selectCollection('complaints');
 
-    $rooms = $database->selectCollection('rooms');
+    $notices = $db->selectCollection('notices');
 
-    $complaints = $database->selectCollection('complaints');
+    $staff = $db->selectCollection('staff');
 
-    $notices = $database->selectCollection('notices');
+    $food = $db->selectCollection('food');
 
-    $staff = $database->selectCollection('staff');
+} catch (Throwable $e) {
 
-} catch (Exception $e) {
-
-    /*
-     * Stop the application if the database connection fails.
-     */
     die(
         'Database connection failed: ' .
         htmlspecialchars(
