@@ -8,6 +8,11 @@ require_once __DIR__ . '/config/database.php';
 
 $message = "";
 
+// Show registration success message
+if (isset($_GET['registered']) && $_GET['registered'] === '1') {
+    $message = "Registration successful. Please login.";
+}
+
 // Handle login form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
@@ -23,53 +28,79 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         try {
 
-            // Find the user by username and role
+            // Find user by username and role
             $user = $users->findOne([
                 'username' => $username,
                 'role' => $role
             ]);
 
-            if ($user) {
+            if (!$user) {
+
+                $message = "Invalid username, password, or role.";
+
+            } else {
 
                 $storedPassword = $user['password'] ?? '';
 
-                // Verify hashed password
-                if (password_verify($password, $storedPassword)) {
+                // Verify password
+                if (!password_verify($password, $storedPassword)) {
 
-                    // Store login information in session
+                    $message = "Invalid username or password.";
+
+                } else {
+
+                    // Store basic login information
                     $_SESSION['user_id'] = (string) $user['_id'];
                     $_SESSION['username'] = $user['username'];
                     $_SESSION['role'] = $user['role'];
 
-                    // Redirect according to role
+                    /*
+                     * STUDENT LOGIN
+                     *
+                     * Find the student's profile using the username.
+                     */
                     if ($role === 'student') {
 
-                        header('Location: student/dashboard.php');
-                        exit;
+                        $student = $students->findOne([
+                            'username' => $username
+                        ]);
 
-                    } elseif ($role === 'warden') {
+                        if (!$student) {
 
-                        header('Location: warden/dashboard.php');
-                        exit;
+                            $message = "Student profile not found.";
+
+                        } elseif (!isset($student['roll_no'])) {
+
+                            $message = "Student roll number is missing.";
+
+                        } else {
+
+                            // Store student information in session
+                            $_SESSION['student_id'] = (string) $student['_id'];
+                            $_SESSION['roll_no'] = $student['roll_no'];
+
+                            // Redirect to student dashboard
+                            header('Location: student/dashboard.php');
+                            exit;
+                        }
 
                     }
 
-                } else {
+                    /*
+                     * WARDEN LOGIN
+                     */
+                    elseif ($role === 'warden') {
 
-                    $message = "Invalid username or password.";
-
+                        header('Location: warden/dashboard.php');
+                        exit;
+                    }
                 }
-
-            } else {
-
-                $message = "Invalid username, password, or role.";
-
             }
 
         } catch (Exception $e) {
 
-            $message = "Login failed. Please try again.";
-
+            // Temporary detailed error for local debugging
+            $message = "Login failed: " . $e->getMessage();
         }
     }
 }
@@ -90,7 +121,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <title>Hostel Management Login</title>
 
-    <link rel="stylesheet" href="css/style.css">
+    <link
+        rel="stylesheet"
+        href="css/style.css"
+    >
 
 </head>
 
@@ -112,7 +146,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <form method="POST">
 
-        <label for="username">Username</label>
+        <label for="username">
+            Username
+        </label>
 
         <input
             type="text"
@@ -122,7 +158,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             required
         >
 
-        <label for="password">Password</label>
+        <label for="password">
+            Password
+        </label>
 
         <input
             type="password"
@@ -132,7 +170,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             required
         >
 
-        <label for="role">Login As</label>
+        <label for="role">
+            Login As
+        </label>
 
         <select
             id="role"
@@ -157,16 +197,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <button type="submit">
             Login
         </button>
-        <p><h1>
-    New student?
-    <a href="register.php">Create Student Account</a></h1>
-</p>
 
     </form>
 
+    <p>
+        New student?
+        <a href="register.php">
+            Create Student Account
+        </a>
+    </p>
+
 </section>
 
-<p>© 2026 Hostel Management System</p>
+<p>
+    © 2026 Hostel Management System
+</p>
 
 </body>
 

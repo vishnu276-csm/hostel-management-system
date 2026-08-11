@@ -1,40 +1,41 @@
 <?php
 
+require_once __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . '/config/database.php';
 
 $message = "";
 
-// Keep entered values after an error
-$name = trim($_POST["name"] ?? "");
-$rollNo = trim($_POST["roll_no"] ?? "");
-$username = trim($_POST["username"] ?? "");
-$email = trim($_POST["email"] ?? "");
-$phone = trim($_POST["phone"] ?? "");
-$course = trim($_POST["course"] ?? "");
-$year = trim($_POST["year"] ?? "");
-$parentName = trim($_POST["parent_name"] ?? "");
-$parentPhone = trim($_POST["parent_phone"] ?? "");
-$address = trim($_POST["address"] ?? "");
+// Keep entered values when registration fails
+$name = trim($_POST['name'] ?? '');
+$rollNo = trim($_POST['roll_no'] ?? '');
+$username = trim($_POST['username'] ?? '');
+$email = trim($_POST['email'] ?? '');
+$phone = trim($_POST['phone'] ?? '');
+$course = trim($_POST['course'] ?? '');
+$year = trim($_POST['year'] ?? '');
+$parentName = trim($_POST['parent_name'] ?? '');
+$parentPhone = trim($_POST['parent_phone'] ?? '');
+$address = trim($_POST['address'] ?? '');
 
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    $password = $_POST["password"] ?? "";
-    $confirmPassword = $_POST["confirm_password"] ?? "";
+    $password = $_POST['password'] ?? '';
+    $confirmPassword = $_POST['confirm_password'] ?? '';
 
-    // Required field validation
+    // Required fields
     if (
-        $name === "" ||
-        $rollNo === "" ||
-        $username === "" ||
-        $email === "" ||
-        $phone === "" ||
-        $course === "" ||
-        $year === "" ||
-        $parentName === "" ||
-        $parentPhone === "" ||
-        $address === "" ||
-        $password === "" ||
-        $confirmPassword === ""
+        $name === '' ||
+        $rollNo === '' ||
+        $username === '' ||
+        $email === '' ||
+        $phone === '' ||
+        $course === '' ||
+        $year === '' ||
+        $parentName === '' ||
+        $parentPhone === '' ||
+        $address === '' ||
+        $password === '' ||
+        $confirmPassword === ''
     ) {
 
         $message = "Please fill in all fields.";
@@ -54,12 +55,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
         $message = "Please enter a valid 10-digit parent phone number.";
 
-    // Password validation
+    // Year validation
+    } elseif (!in_array($year, ['1', '2', '3', '4'], true)) {
+
+        $message = "Please select a valid year.";
+
+    // Password length
     } elseif (strlen($password) < 6) {
 
         $message = "Password must be at least 6 characters.";
 
-    // Password confirmation
+    // Password match
     } elseif ($password !== $confirmPassword) {
 
         $message = "Passwords do not match.";
@@ -68,9 +74,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
         try {
 
-            // Check username
+            /*
+             * Check username
+             */
             $existingUser = $users->findOne([
-                "username" => $username
+                'username' => $username
             ]);
 
             if ($existingUser) {
@@ -79,9 +87,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
             } else {
 
-                // Check roll number
+                /*
+                 * Check roll number
+                 */
                 $existingStudent = $students->findOne([
-                    "roll_no" => $rollNo
+                    'roll_no' => $rollNo
                 ]);
 
                 if ($existingStudent) {
@@ -90,9 +100,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
                 } else {
 
-                    // Check email
+                    /*
+                     * Check email in students
+                     */
                     $existingEmail = $students->findOne([
-                        "email" => $email
+                        'email' => $email
                     ]);
 
                     if ($existingEmail) {
@@ -101,53 +113,91 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
                     } else {
 
-                        // Hash password
-                        $hashedPassword = password_hash(
-                            $password,
-                            PASSWORD_DEFAULT
-                        );
-
-                        // Create login account
-                        $userResult = $users->insertOne([
-                            "username" => $username,
-                            "password" => $hashedPassword,
-                            "role" => "student",
-                            "email" => $email,
-                            "created_at" => new MongoDB\BSON\UTCDateTime()
+                        /*
+                         * Check email in users as well
+                         */
+                        $existingUserEmail = $users->findOne([
+                            'email' => $email
                         ]);
 
-                        // Create student profile
-                        $students->insertOne([
-                            "user_id" => $userResult->getInsertedId(),
+                        if ($existingUserEmail) {
 
-                            "name" => $name,
-                            "roll_no" => $rollNo,
-                            "username" => $username,
-                            "email" => $email,
-                            "phone" => $phone,
-                            "course" => $course,
-                            "year" => $year,
+                            $message = "Email already exists.";
 
-                            "parent_name" => $parentName,
-                            "parent_phone" => $parentPhone,
+                        } else {
 
-                            "address" => $address,
+                            /*
+                             * Create hashed password
+                             */
+                            $hashedPassword = password_hash(
+                                $password,
+                                PASSWORD_DEFAULT
+                            );
 
-                            "room_no" => null,
+                            /*
+                             * Create user account
+                             */
+                            $userResult = $users->insertOne([
+                                'username' => $username,
+                                'password' => $hashedPassword,
+                                'role' => 'student',
+                                'email' => $email,
+                                'created_at' => new MongoDB\BSON\UTCDateTime()
+                            ]);
 
-                            "created_at" => new MongoDB\BSON\UTCDateTime()
-                        ]);
+                            try {
 
-                        // Registration successful
-                        header("Location: login.php?registered=1");
-                        exit;
+                                /*
+                                 * Create student profile
+                                 */
+                                $students->insertOne([
+                                    'user_id' => $userResult->getInsertedId(),
+
+                                    'name' => $name,
+                                    'roll_no' => $rollNo,
+                                    'username' => $username,
+                                    'email' => $email,
+                                    'phone' => $phone,
+                                    'course' => $course,
+                                    'year' => $year,
+
+                                    'parent_name' => $parentName,
+                                    'parent_phone' => $parentPhone,
+
+                                    'address' => $address,
+
+                                    'room_no' => null,
+
+                                    'created_at' => new MongoDB\BSON\UTCDateTime()
+                                ]);
+
+                                /*
+                                 * Registration successful
+                                 */
+                                header('Location: login.php?registered=1');
+                                exit;
+
+                            } catch (Exception $studentError) {
+
+                                /*
+                                 * If student creation fails,
+                                 * remove the user account that was
+                                 * just created.
+                                 */
+                                $users->deleteOne([
+                                    '_id' => $userResult->getInsertedId()
+                                ]);
+
+                                $message = "STUDENT ERROR: " . $studentError->getMessage();
+                            }
+                        }
                     }
                 }
             }
 
         } catch (Exception $e) {
 
-            $message = "Registration failed. Please try again.";
+            $message = "ERROR: " . $e->getMessage();
         }
     }
 }
@@ -286,28 +336,28 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
             <option
                 value="1"
-                <?php echo ($year === "1") ? "selected" : ""; ?>
+                <?php echo ($year === '1') ? 'selected' : ''; ?>
             >
                 1st Year
             </option>
 
             <option
                 value="2"
-                <?php echo ($year === "2") ? "selected" : ""; ?>
+                <?php echo ($year === '2') ? 'selected' : ''; ?>
             >
                 2nd Year
             </option>
 
             <option
                 value="3"
-                <?php echo ($year === "3") ? "selected" : ""; ?>
+                <?php echo ($year === '3') ? 'selected' : ''; ?>
             >
                 3rd Year
             </option>
 
             <option
                 value="4"
-                <?php echo ($year === "4") ? "selected" : ""; ?>
+                <?php echo ($year === '4') ? 'selected' : ''; ?>
             >
                 4th Year
             </option>
