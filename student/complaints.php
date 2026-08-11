@@ -1,17 +1,23 @@
 <?php
 
 require_once __DIR__ . '/../config/auth.php';
-
-checkLogin('student');
-
 require_once __DIR__ . '/../config/database.php';
 
-$rollNo = $_SESSION['student_roll'] ?? '';
+checkStudent();
 
-if ($rollNo == '') {
-    die("Student information is missing.");
+/*
+ * Login stores the student's roll number in:
+ * $_SESSION['roll_no']
+ */
+$rollNo = $_SESSION['roll_no'] ?? '';
+
+if ($rollNo === '') {
+    die("Student roll number is missing from the session.");
 }
 
+/*
+ * Find the logged-in student's record.
+ */
 $student = $students->findOne([
     'roll_no' => $rollNo
 ]);
@@ -22,18 +28,21 @@ if (!$student) {
 
 $message = "";
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
+/*
+ * Handle complaint submission.
+ */
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $subject = trim($_POST['subject'] ?? '');
     $description = trim($_POST['description'] ?? '');
 
-    if ($subject != "" && $description != "") {
+    if ($subject !== '' && $description !== '') {
 
         try {
 
             $complaints->insertOne([
                 'student_roll' => $rollNo,
-                'student_name' => $student['name'] ?? '',
+                'student_name' => (string)($student['name'] ?? ''),
                 'subject' => $subject,
                 'description' => $description,
                 'status' => 'Pending',
@@ -55,6 +64,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 }
 
+/*
+ * Get this student's complaints.
+ */
 $complaintList = $complaints->find(
     [
         'student_roll' => $rollNo
@@ -99,11 +111,17 @@ $complaintList = $complaints->find(
             <div>
 
                 <a href="dashboard.php">Dashboard</a>
+
                 <a href="profile.php">Profile</a>
+
                 <a href="room.php">My Room</a>
+
                 <a href="food.php">Food</a>
+
                 <a href="complaints.php">Complaints</a>
+
                 <a href="notices.php">Notices</a>
+
                 <a href="../logout.php">Logout</a>
 
             </div>
@@ -126,12 +144,18 @@ $complaintList = $complaints->find(
 
     </section>
 
-    <?php if ($message != ""): ?>
+    <?php if ($message !== ''): ?>
 
         <div class="card">
 
             <p>
-                <?php echo htmlspecialchars($message); ?>
+                <?php
+                echo htmlspecialchars(
+                    $message,
+                    ENT_QUOTES,
+                    'UTF-8'
+                );
+                ?>
             </p>
 
         </div>
@@ -144,18 +168,24 @@ $complaintList = $complaints->find(
 
         <form method="POST">
 
-            <label>Subject</label>
+            <label for="subject">
+                Subject
+            </label>
 
             <input
                 type="text"
+                id="subject"
                 name="subject"
                 placeholder="Enter complaint subject"
                 required
             >
 
-            <label>Description</label>
+            <label for="description">
+                Description
+            </label>
 
             <textarea
+                id="description"
                 name="description"
                 rows="5"
                 placeholder="Describe your complaint"
@@ -178,62 +208,93 @@ $complaintList = $complaints->find(
 
             <table>
 
-                <tr>
-
-                    <th>Subject</th>
-                    <th>Description</th>
-                    <th>Status</th>
-                    <th>Date</th>
-
-                </tr>
-
-                <?php foreach ($complaintList as $complaint): ?>
+                <thead>
 
                     <tr>
 
-                        <td>
-                            <?php echo htmlspecialchars($complaint['subject'] ?? '-'); ?>
-                        </td>
+                        <th>Subject</th>
 
-                        <td>
-                            <?php echo nl2br(htmlspecialchars($complaint['description'] ?? '-')); ?>
-                        </td>
+                        <th>Description</th>
 
-                        <td>
-                            <?php echo htmlspecialchars($complaint['status'] ?? 'Pending'); ?>
-                        </td>
+                        <th>Status</th>
 
-                        <td>
+                        <th>Date</th>
 
-                            <?php
+                    </tr>
 
-                            if (isset($complaint['created_at'])) {
+                </thead>
 
-                                try {
+                <tbody>
 
-                                    echo $complaint['created_at']
-                                        ->toDateTime()
-                                        ->format('d-m-Y H:i');
+                    <?php foreach ($complaintList as $complaint): ?>
 
-                                } catch (Exception $e) {
+                        <tr>
+
+                            <td>
+                                <?php
+                                echo htmlspecialchars(
+                                    (string)($complaint['subject'] ?? '-'),
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                );
+                                ?>
+                            </td>
+
+                            <td>
+                                <?php
+                                echo nl2br(
+                                    htmlspecialchars(
+                                        (string)($complaint['description'] ?? '-'),
+                                        ENT_QUOTES,
+                                        'UTF-8'
+                                    )
+                                );
+                                ?>
+                            </td>
+
+                            <td>
+                                <?php
+                                echo htmlspecialchars(
+                                    (string)($complaint['status'] ?? 'Pending'),
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                );
+                                ?>
+                            </td>
+
+                            <td>
+
+                                <?php
+
+                                if (isset($complaint['created_at'])) {
+
+                                    try {
+
+                                        echo $complaint['created_at']
+                                            ->toDateTime()
+                                            ->format('d-m-Y H:i');
+
+                                    } catch (Exception $e) {
+
+                                        echo '-';
+
+                                    }
+
+                                } else {
 
                                     echo '-';
 
                                 }
 
-                            } else {
+                                ?>
 
-                                echo '-';
+                            </td>
 
-                            }
+                        </tr>
 
-                            ?>
+                    <?php endforeach; ?>
 
-                        </td>
-
-                    </tr>
-
-                <?php endforeach; ?>
+                </tbody>
 
             </table>
 
