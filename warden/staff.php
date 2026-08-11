@@ -1,109 +1,58 @@
 <?php
 
 require_once __DIR__ . '/../config/auth.php';
+require_once __DIR__ . '/../config/database.php';
 
 checkLogin('warden');
 
-require_once __DIR__ . '/../config/database.php';
-
 $message = "";
 
+/*
+ * Make sure the staff collection exists.
+ */
+if (!isset($staff) || $staff === null) {
+    die("Staff database collection is not configured.");
+}
 
 /*
- * HANDLE POST REQUESTS
+ * Add staff.
  */
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $name = trim($_POST['name'] ?? '');
+    $role = trim($_POST['role'] ?? '');
+    $phone = trim($_POST['phone'] ?? '');
+    $email = trim($_POST['email'] ?? '');
 
-    $action = $_POST['action'] ?? '';
+    if ($name === '' || $role === '') {
 
+        $message = "Name and role are required.";
 
-    /*
-     * ADD STAFF
-     */
+    } else {
 
-    if ($action == "add") {
+        try {
 
-        $name = trim($_POST['name'] ?? '');
-        $role = trim($_POST['role'] ?? '');
-        $phone = trim($_POST['phone'] ?? '');
-        $email = trim($_POST['email'] ?? '');
+            $staff->insertOne([
+                'name' => $name,
+                'role' => $role,
+                'phone' => $phone,
+                'email' => $email,
+                'created_at' => new MongoDB\BSON\UTCDateTime()
+            ]);
 
-        if ($name != "" && $role != "") {
+            $message = "Staff member added successfully.";
 
-            try {
+        } catch (Exception $e) {
 
-                $staff->insertOne([
-                    'name' => $name,
-                    'role' => $role,
-                    'phone' => $phone,
-                    'email' => $email
-                ]);
-
-                $message = "Staff member added successfully.";
-
-            } catch (Exception $e) {
-
-                $message = "Unable to add staff member.";
-
-            }
-
-        } else {
-
-            $message = "Name and role are required.";
-
-        }
-    }
-
-
-    /*
-     * DELETE STAFF
-     */
-
-    if ($action == "delete") {
-
-        $staffId = $_POST['staff_id'] ?? '';
-
-        if (
-            $staffId != "" &&
-            preg_match('/^[a-f0-9]{24}$/i', $staffId)
-        ) {
-
-            try {
-
-                $result = $staff->deleteOne([
-                    '_id' => new MongoDB\BSON\ObjectId($staffId)
-                ]);
-
-                if ($result->getDeletedCount() > 0) {
-
-                    $message = "Staff member deleted successfully.";
-
-                } else {
-
-                    $message = "Staff member not found.";
-
-                }
-
-            } catch (Exception $e) {
-
-                $message = "Unable to delete staff member.";
-
-            }
-
-        } else {
-
-            $message = "Invalid staff ID.";
+            $message = "Unable to add staff member.";
 
         }
     }
 }
 
-
 /*
- * GET STAFF LIST
+ * Get all staff.
  */
-
 try {
 
     $staffList = $staff->find(
@@ -119,10 +68,9 @@ try {
 
     $staffList = [];
 
-    if ($message == "") {
-        $message = "Unable to load staff list.";
+    if ($message === '') {
+        $message = "Unable to load staff records.";
     }
-
 }
 
 ?>
@@ -141,7 +89,10 @@ try {
 
     <title>Staff Management</title>
 
-    <link rel="stylesheet" href="../css/style.css">
+    <link
+        rel="stylesheet"
+        href="../css/style.css"
+    >
 
 </head>
 
@@ -157,15 +108,37 @@ try {
 
             <div>
 
-                <a href="dashboard.php">Dashboard</a>
-                <a href="students.php">Students</a>
-                <a href="rooms.php">Rooms</a>
-                <a href="parents.php">Parents</a>
-                <a href="staff.php">Staff</a>
-                <a href="food.php">Food</a>
-                <a href="complaints.php">Complaints</a>
-                <a href="notices.php">Notices</a>
-                <a href="../logout.php">Logout</a>
+                <a href="dashboard.php">
+                    Dashboard
+                </a>
+
+                <a href="students.php">
+                    Students
+                </a>
+
+                <a href="rooms.php">
+                    Rooms
+                </a>
+
+                <a href="complaints.php">
+                    Complaints
+                </a>
+
+                <a href="notices.php">
+                    Notices
+                </a>
+
+                <a href="food.php">
+                    Food
+                </a>
+
+                <a href="staff.php">
+                    Staff
+                </a>
+
+                <a href="../logout.php">
+                    Logout
+                </a>
 
             </div>
 
@@ -182,71 +155,76 @@ try {
         <h1>Staff Management</h1>
 
         <p>
-            Add and manage hostel staff
+            Manage hostel staff members.
         </p>
 
     </section>
 
+    <?php if ($message !== ''): ?>
 
-    <?php if ($message != ""): ?>
-
-        <div class="card">
+        <section class="card">
 
             <p>
-                <?php echo htmlspecialchars($message); ?>
+                <?php
+                echo htmlspecialchars(
+                    $message,
+                    ENT_QUOTES,
+                    'UTF-8'
+                );
+                ?>
             </p>
 
-        </div>
+        </section>
 
     <?php endif; ?>
 
-
-    <!-- ADD STAFF -->
-
     <section class="card">
 
-        <h2>Add Staff</h2>
+        <h2>Add Staff Member</h2>
 
         <form method="POST">
 
-            <input
-                type="hidden"
-                name="action"
-                value="add"
-            >
-
-            <label>Name</label>
+            <label for="name">
+                Name
+            </label>
 
             <input
                 type="text"
+                id="name"
                 name="name"
-                placeholder="Enter staff name"
                 required
             >
 
-            <label>Role</label>
+            <label for="role">
+                Role
+            </label>
 
             <input
                 type="text"
+                id="role"
                 name="role"
-                placeholder="Security, Cook, Cleaner"
+                placeholder="Security / Cook / Cleaner / etc."
                 required
             >
 
-            <label>Phone</label>
+            <label for="phone">
+                Phone
+            </label>
 
             <input
                 type="text"
+                id="phone"
                 name="phone"
-                placeholder="Enter phone number"
             >
 
-            <label>Email</label>
+            <label for="email">
+                Email
+            </label>
 
             <input
                 type="email"
+                id="email"
                 name="email"
-                placeholder="Enter email address"
             >
 
             <button type="submit">
@@ -257,9 +235,6 @@ try {
 
     </section>
 
-
-    <!-- STAFF LIST -->
-
     <section class="card">
 
         <h2>Staff List</h2>
@@ -268,16 +243,23 @@ try {
 
             <table>
 
-                <tr>
+                <thead>
 
-                    <th>Name</th>
-                    <th>Role</th>
-                    <th>Phone</th>
-                    <th>Email</th>
-                    <th>Action</th>
+                    <tr>
 
-                </tr>
+                        <th>Name</th>
 
+                        <th>Role</th>
+
+                        <th>Phone</th>
+
+                        <th>Email</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
 
                 <?php foreach ($staffList as $member): ?>
 
@@ -286,7 +268,11 @@ try {
                         <td>
                             <?php
                             echo htmlspecialchars(
-                                $member['name'] ?? '-'
+                                (string) (
+                                    $member['name'] ?? '-'
+                                ),
+                                ENT_QUOTES,
+                                'UTF-8'
                             );
                             ?>
                         </td>
@@ -294,7 +280,11 @@ try {
                         <td>
                             <?php
                             echo htmlspecialchars(
-                                $member['role'] ?? '-'
+                                (string) (
+                                    $member['role'] ?? '-'
+                                ),
+                                ENT_QUOTES,
+                                'UTF-8'
                             );
                             ?>
                         </td>
@@ -302,7 +292,11 @@ try {
                         <td>
                             <?php
                             echo htmlspecialchars(
-                                $member['phone'] ?? '-'
+                                (string) (
+                                    $member['phone'] ?? '-'
+                                ),
+                                ENT_QUOTES,
+                                'UTF-8'
                             );
                             ?>
                         </td>
@@ -310,57 +304,20 @@ try {
                         <td>
                             <?php
                             echo htmlspecialchars(
-                                $member['email'] ?? '-'
+                                (string) (
+                                    $member['email'] ?? '-'
+                                ),
+                                ENT_QUOTES,
+                                'UTF-8'
                             );
                             ?>
-                        </td>
-
-                        <td>
-
-                            <a
-                                href="edit_staff.php?id=<?php echo htmlspecialchars((string)$member['_id']); ?>"
-                                style="
-                                    display:inline-block;
-                                    padding:6px 10px;
-                                    background:#007bff;
-                                    color:white;
-                                    text-decoration:none;
-                                    border-radius:4px;
-                                    margin-bottom:5px;
-                                "
-                            >
-                                Edit
-                            </a>
-
-
-                            <form
-                                method="POST"
-                                onsubmit="return confirm('Delete this staff member?');"
-                            >
-
-                                <input
-                                    type="hidden"
-                                    name="action"
-                                    value="delete"
-                                >
-
-                                <input
-                                    type="hidden"
-                                    name="staff_id"
-                                    value="<?php echo htmlspecialchars((string)$member['_id']); ?>"
-                                >
-
-                                <button type="submit">
-                                    Delete
-                                </button>
-
-                            </form>
-
                         </td>
 
                     </tr>
 
                 <?php endforeach; ?>
+
+                </tbody>
 
             </table>
 
@@ -376,13 +333,13 @@ try {
 
 </main>
 
-
 <footer>
 
-    <p>© 2026 Hostel Management System</p>
+    <p>
+        © 2026 Hostel Management System
+    </p>
 
 </footer>
-
 
 <script src="../js/script.js"></script>
 
