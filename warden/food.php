@@ -1,4 +1,3 @@
-```php
 <?php
 
 require_once __DIR__ . '/../config/auth.php';
@@ -357,4 +356,3 @@ $foodList = $food->find(
 </body>
 
 </html>
-```

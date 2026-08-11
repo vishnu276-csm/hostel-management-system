@@ -1,4 +1,3 @@
-```php
 <?php
 
 require_once __DIR__ . '/../config/auth.php';
@@ -261,4 +260,3 @@ $complaintList = $complaints->find(
 </body>
 
 </html>
-```

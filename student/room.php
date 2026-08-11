@@ -1,4 +1,3 @@
-```php
 <?php
 
 require_once __DIR__ . '/../config/auth.php';
@@ -271,4 +270,3 @@ if ($roomNo != '') {
 </body>
 
 </html>
-```

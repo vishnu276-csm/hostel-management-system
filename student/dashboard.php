@@ -6,14 +6,14 @@ checkLogin('student');
 
 require_once __DIR__ . '/../config/database.php';
 
-// Get the student's roll number from the login session
+// Get the student's roll number from the login session.
 $studentRoll = $_SESSION['roll_no'] ?? '';
 
 if ($studentRoll === '') {
     die("Student roll number is missing from the session.");
 }
 
-// Find the student in MongoDB
+// Find the student profile.
 $student = $students->findOne([
     'roll_no' => $studentRoll
 ]);
@@ -22,15 +22,14 @@ if (!$student) {
     die("Student information not found.");
 }
 
+// Default room information.
 $roomCapacity = 0;
 $roomOccupied = 0;
 
-// Get student's room number
-$roomNo = trim($student['room_no'] ?? '');
+$roomNo = trim((string)($student['room_no'] ?? ''));
 
 if ($roomNo !== '') {
 
-    // Find room information
     $room = $rooms->findOne([
         'room_no' => $roomNo
     ]);
@@ -39,18 +38,17 @@ if ($roomNo !== '') {
         $roomCapacity = (int)($room['capacity'] ?? 0);
     }
 
-    // Count students in the same room
     $roomOccupied = $students->countDocuments([
         'room_no' => $roomNo
     ]);
 }
 
-// Count student's complaints
+// Count student's complaints.
 $complaintCount = $complaints->countDocuments([
     'student_roll' => $studentRoll
 ]);
 
-// Count notices
+// Count notices.
 $noticeCount = $notices->countDocuments();
 
 ?>
@@ -69,198 +67,229 @@ $noticeCount = $notices->countDocuments();
 
     <title>Student Dashboard</title>
 
-    <link rel="stylesheet" href="../css/style.css">
+    <link
+        rel="stylesheet"
+        href="../css/style.css"
+    >
 
 </head>
 
 <body>
 
-<header>
+<div class="container">
 
-    <div class="container">
+    <nav>
 
-        <nav>
+        <h2>
+            Hostel Management
+        </h2>
 
-            <h2>Hostel Management</h2>
+        <div>
 
-            <div>
+            <a href="dashboard.php">
+                Dashboard
+            </a>
 
-                <a href="dashboard.php">Dashboard</a>
-                <a href="profile.php">Profile</a>
-                <a href="room.php">My Room</a>
-                <a href="food.php">Food</a>
-                <a href="complaints.php">Complaints</a>
-                <a href="notices.php">Notices</a>
-                <a href="../logout.php">Logout</a>
+            <a href="profile.php">
+                Profile
+            </a>
 
-            </div>
+            <a href="room.php">
+                My Room
+            </a>
 
-        </nav>
+            <a href="food.php">
+                Food
+            </a>
+
+            <a href="complaints.php">
+                Complaints
+            </a>
+
+            <a href="notices.php">
+                Notices
+            </a>
+
+            <a href="../logout.php">
+                Logout
+            </a>
+
+        </div>
+
+    </nav>
+
+</div>
+
+<section class="dashboard-header">
+
+    <h1>
+        Welcome,
+        <?php echo htmlspecialchars($student['name'] ?? 'Student'); ?>
+    </h1>
+
+    <p>
+        Student hostel dashboard
+    </p>
+
+</section>
+
+<section class="dashboard-grid">
+
+    <div class="card">
+
+        <h3>
+            Roll Number
+        </h3>
+
+        <h2>
+            <?php echo htmlspecialchars($student['roll_no'] ?? '-'); ?>
+        </h2>
+
+        <a href="profile.php">
+            View Profile
+        </a>
 
     </div>
 
-</header>
+    <div class="card">
 
-<main class="container">
+        <h3>
+            Course
+        </h3>
 
-    <section class="dashboard-header">
+        <h2>
+            <?php echo htmlspecialchars($student['course'] ?? '-'); ?>
+        </h2>
 
-        <h1>
-            Welcome,
-            <?php echo htmlspecialchars($student['name'] ?? 'Student'); ?>
-        </h1>
+    </div>
 
-        <p>
-            Student hostel dashboard
-        </p>
+    <div class="card">
 
-    </section>
+        <h3>
+            Year
+        </h3>
 
-    <section class="dashboard-grid">
+        <h2>
+            <?php echo htmlspecialchars($student['year'] ?? '-'); ?>
+        </h2>
 
-        <div class="card">
+    </div>
 
-            <h3>Roll Number</h3>
+    <div class="card">
 
-            <h2>
-                <?php echo htmlspecialchars($student['roll_no'] ?? '-'); ?>
-            </h2>
+        <h3>
+            My Room
+        </h3>
 
-            <a href="profile.php">
-                View Profile
-            </a>
+        <h2>
+            <?php echo htmlspecialchars($student['room_no'] ?? 'Not Assigned'); ?>
+        </h2>
 
-        </div>
+        <a href="room.php">
+            View Room
+        </a>
 
-        <div class="card">
+    </div>
 
-            <h3>Course</h3>
+    <div class="card">
 
-            <h2>
-                <?php echo htmlspecialchars($student['course'] ?? '-'); ?>
-            </h2>
+        <h3>
+            Room Capacity
+        </h3>
 
-        </div>
+        <h2>
+            <?php echo $roomCapacity; ?>
+        </h2>
 
-        <div class="card">
+    </div>
 
-            <h3>Year</h3>
+    <div class="card">
 
-            <h2>
-                <?php echo htmlspecialchars($student['year'] ?? '-'); ?>
-            </h2>
+        <h3>
+            Room Occupied
+        </h3>
 
-        </div>
+        <h2>
+            <?php echo $roomOccupied; ?>
+        </h2>
 
-        <div class="card">
+    </div>
 
-            <h3>My Room</h3>
+    <div class="card">
 
-            <h2>
-                <?php echo htmlspecialchars($student['room_no'] ?? 'Not Assigned'); ?>
-            </h2>
+        <h3>
+            My Complaints
+        </h3>
 
-            <a href="room.php">
-                View Room
-            </a>
+        <h2>
+            <?php echo $complaintCount; ?>
+        </h2>
 
-        </div>
+        <a href="complaints.php">
+            View Complaints
+        </a>
 
-        <div class="card">
+    </div>
 
-            <h3>Room Capacity</h3>
+    <div class="card">
 
-            <h2>
-                <?php echo $roomCapacity; ?>
-            </h2>
+        <h3>
+            Notices
+        </h3>
 
-        </div>
+        <h2>
+            <?php echo $noticeCount; ?>
+        </h2>
 
-        <div class="card">
+        <a href="notices.php">
+            View Notices
+        </a>
 
-            <h3>Room Occupied</h3>
+    </div>
 
-            <h2>
-                <?php echo $roomOccupied; ?>
-            </h2>
+</section>
 
-        </div>
+<section class="card">
 
-        <div class="card">
+    <h2>
+        Quick Actions
+    </h2>
 
-            <h3>My Complaints</h3>
+    <p>
+        <a href="profile.php">
+            View My Profile
+        </a>
+    </p>
 
-            <h2>
-                <?php echo $complaintCount; ?>
-            </h2>
+    <p>
+        <a href="room.php">
+            View My Room
+        </a>
+    </p>
 
-            <a href="complaints.php">
-                View Complaints
-            </a>
+    <p>
+        <a href="food.php">
+            View Food Menu
+        </a>
+    </p>
 
-        </div>
+    <p>
+        <a href="complaints.php">
+            Submit Complaint
+        </a>
+    </p>
 
-        <div class="card">
+    <p>
+        <a href="notices.php">
+            View Notices
+        </a>
+    </p>
 
-            <h3>Notices</h3>
+</section>
 
-            <h2>
-                <?php echo $noticeCount; ?>
-            </h2>
-
-            <a href="notices.php">
-                View Notices
-            </a>
-
-        </div>
-
-    </section>
-
-    <section class="card">
-
-        <h2>Quick Actions</h2>
-
-        <p>
-            <a href="profile.php">
-                View My Profile
-            </a>
-        </p>
-
-        <p>
-            <a href="room.php">
-                View My Room
-            </a>
-        </p>
-
-        <p>
-            <a href="food.php">
-                View Food Menu
-            </a>
-        </p>
-
-        <p>
-            <a href="complaints.php">
-                Submit Complaint
-            </a>
-        </p>
-
-        <p>
-            <a href="notices.php">
-                View Notices
-            </a>
-        </p>
-
-    </section>
-
-</main>
-
-<footer>
-
-    <p>© 2026 Hostel Management System</p>
-
-</footer>
-
-<script src="../js/script.js"></script>
+<p>
+    © 2026 Hostel Management System
+</p>
 
 </body>
 

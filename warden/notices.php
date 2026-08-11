@@ -1,4 +1,3 @@
-```php
 <?php
 
 require_once __DIR__ . '/../config/auth.php';
@@ -300,4 +299,3 @@ $noticeList = $notices->find(
 </body>
 
 </html>
-```

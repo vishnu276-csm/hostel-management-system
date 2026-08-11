@@ -1,18 +1,10 @@
 <?php
 
-/*
- * Authentication helper
- */
-
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-
-/*
- * Check whether the user is logged in.
- */
-function checkLogin()
+function checkLogin(): void
 {
     if (!isset($_SESSION['user_id'])) {
         header('Location: /login.php');
@@ -20,55 +12,22 @@ function checkLogin()
     }
 }
 
-
-/*
- * Check whether the logged-in user has the required role.
- */
-function checkRole($requiredRole)
+function checkRole(string $role): void
 {
     checkLogin();
 
-    if (
-        !isset($_SESSION['role']) ||
-        $_SESSION['role'] !== $requiredRole
-    ) {
-        http_response_code(403);
-        die('Access denied.');
-    }
-}
-
-
-/*
- * Check student login.
- */
-function checkStudent()
-{
-    checkLogin();
-
-    if (
-        !isset($_SESSION['role']) ||
-        $_SESSION['role'] !== 'student'
-    ) {
+    if (($_SESSION['role'] ?? '') !== $role) {
         header('Location: /login.php');
         exit;
     }
 }
 
-
-/*
- * Check warden login.
- */
-function checkWarden()
+function checkStudent(): void
 {
-    checkLogin();
-
-    if (
-        !isset($_SESSION['role']) ||
-        $_SESSION['role'] !== 'warden'
-    ) {
-        header('Location: /login.php');
-        exit;
-    }
+    checkRole('student');
 }
 
-?>
+function checkWarden(): void
+{
+    checkRole('warden');
+}
