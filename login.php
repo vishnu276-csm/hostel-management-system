@@ -157,6 +157,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <button type="submit">
             Login
         </button>
+        <p><h1>
+    New student?
+    <a href="register.php">Create Student Account</a></h1>
+</p>
 
     </form>
 
