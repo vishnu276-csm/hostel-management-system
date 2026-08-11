@@ -3,32 +3,71 @@
 require_once __DIR__ . '/../config/auth.php';
 require_once __DIR__ . '/../config/database.php';
 
-checkStudent();
+checkWarden();
 
-$studentRoll = $_SESSION['roll_no'] ?? '';
+$message = "";
 
-if ($studentRoll === '') {
-    die("Student roll number is missing from the session.");
+/*
+ * Update complaint status.
+ */
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+    $complaintId = trim($_POST['complaint_id'] ?? '');
+    $status = trim($_POST['status'] ?? '');
+
+    $allowedStatuses = [
+        'Pending',
+        'In Progress',
+        'Resolved',
+        'Rejected'
+    ];
+
+    if ($complaintId !== '' && in_array($status, $allowedStatuses, true)) {
+
+        try {
+
+            $complaints->updateOne(
+                [
+                    '_id' => new MongoDB\BSON\ObjectId($complaintId)
+                ],
+                [
+                    '$set' => [
+                        'status' => $status,
+                        'updated_at' => new MongoDB\BSON\UTCDateTime()
+                    ]
+                ]
+            );
+
+            $message = "Complaint status updated successfully.";
+
+        } catch (Exception $e) {
+
+            $message = "Unable to update complaint.";
+
+        }
+    }
 }
 
+/*
+ * Get all complaints.
+ */
 try {
-    $student = $students->findOne([
-        'roll_no' => $studentRoll
-    ]);
 
-    if (!$student) {
-        die("Student information not found.");
-    }
-
-    $studentId = $student['_id'];
-
-    $studentComplaints = $complaints->find(
-        ['student_id' => $studentId],
-        ['sort' => ['created_at' => -1]]
-    );
+    $complaintList = $complaints->find(
+        [],
+        [
+            'sort' => [
+                'created_at' => -1
+            ]
+        ]
+    )->toArray();
 
 } catch (Exception $e) {
-    die("Unable to load complaints.");
+
+    $complaintList = [];
+
+    $message = "Unable to load complaints.";
+
 }
 
 ?>
@@ -45,7 +84,7 @@ try {
         content="width=device-width, initial-scale=1.0"
     >
 
-    <title>My Complaints</title>
+    <title>Manage Complaints</title>
 
     <link
         rel="stylesheet"
@@ -66,13 +105,37 @@ try {
 
             <div>
 
-                <a href="dashboard.php">Dashboard</a>
-                <a href="profile.php">Profile</a>
-                <a href="room.php">My Room</a>
-                <a href="food.php">Food</a>
-                <a href="complaints.php">Complaints</a>
-                <a href="notices.php">Notices</a>
-                <a href="../logout.php">Logout</a>
+                <a href="dashboard.php">
+                    Dashboard
+                </a>
+
+                <a href="students.php">
+                    Students
+                </a>
+
+                <a href="rooms.php">
+                    Rooms
+                </a>
+
+                <a href="complaints.php">
+                    Complaints
+                </a>
+
+                <a href="notices.php">
+                    Notices
+                </a>
+
+                <a href="food.php">
+                    Food
+                </a>
+
+                <a href="staff.php">
+                    Staff
+                </a>
+
+                <a href="../logout.php">
+                    Logout
+                </a>
 
             </div>
 
@@ -86,62 +149,268 @@ try {
 
     <section class="dashboard-header">
 
-        <h1>My Complaints</h1>
+        <h1>Manage Complaints</h1>
 
         <p>
-            View your submitted complaints.
+            View and manage student complaints.
         </p>
 
     </section>
 
+    <?php if ($message !== ''): ?>
+
+        <section class="card">
+
+            <p>
+                <?php
+                echo htmlspecialchars(
+                    $message,
+                    ENT_QUOTES,
+                    'UTF-8'
+                );
+                ?>
+            </p>
+
+        </section>
+
+    <?php endif; ?>
+
     <section class="card">
 
-        <?php if ($studentComplaints->isDead()): ?>
+        <h2>Student Complaints</h2>
 
-            <p>No complaints found.</p>
+        <?php if (count($complaintList) === 0): ?>
+
+            <p>
+                No complaints found.
+            </p>
 
         <?php else: ?>
 
-            <?php foreach ($studentComplaints as $complaint): ?>
+            <div style="overflow-x:auto;">
 
-                <div class="card">
+                <table>
 
-                    <p>
-                        <strong>Complaint:</strong>
-                        <?php
-                        echo htmlspecialchars(
-                            $complaint['complaint'] ??
-                            $complaint['message'] ??
-                            '-'
-                        );
-                        ?>
-                    </p>
+                    <thead>
 
-                    <p>
-                        <strong>Status:</strong>
-                        <?php
-                        echo htmlspecialchars(
-                            $complaint['status'] ?? 'Pending'
-                        );
-                        ?>
-                    </p>
+                        <tr>
 
-                    <?php if (isset($complaint['created_at'])): ?>
+                            <th>Student</th>
 
-                        <p>
-                            <strong>Date:</strong>
-                            <?php
-                            echo htmlspecialchars(
-                                (string)$complaint['created_at']
-                            );
-                            ?>
-                        </p>
+                            <th>Roll Number</th>
 
-                    <?php endif; ?>
+                            <th>Subject</th>
 
-                </div>
+                            <th>Description</th>
 
-            <?php endforeach; ?>
+                            <th>Status</th>
+
+                            <th>Date</th>
+
+                            <th>Action</th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                    <?php foreach ($complaintList as $complaint): ?>
+
+                        <tr>
+
+                            <td>
+
+                                <?php
+                                echo htmlspecialchars(
+                                    (string) (
+                                        $complaint['student_name'] ?? '-'
+                                    ),
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                );
+                                ?>
+
+                            </td>
+
+                            <td>
+
+                                <?php
+                                echo htmlspecialchars(
+                                    (string) (
+                                        $complaint['student_roll'] ?? '-'
+                                    ),
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                );
+                                ?>
+
+                            </td>
+
+                            <td>
+
+                                <?php
+                                echo htmlspecialchars(
+                                    (string) (
+                                        $complaint['subject'] ?? '-'
+                                    ),
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                );
+                                ?>
+
+                            </td>
+
+                            <td>
+
+                                <?php
+                                echo nl2br(
+                                    htmlspecialchars(
+                                        (string) (
+                                            $complaint['description'] ?? '-'
+                                        ),
+                                        ENT_QUOTES,
+                                        'UTF-8'
+                                    )
+                                );
+                                ?>
+
+                            </td>
+
+                            <td>
+
+                                <?php
+                                echo htmlspecialchars(
+                                    (string) (
+                                        $complaint['status'] ?? 'Pending'
+                                    ),
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                );
+                                ?>
+
+                            </td>
+
+                            <td>
+
+                                <?php
+
+                                if (isset($complaint['created_at'])) {
+
+                                    try {
+
+                                        echo htmlspecialchars(
+                                            $complaint['created_at']
+                                                ->toDateTime()
+                                                ->format('d-m-Y H:i'),
+                                            ENT_QUOTES,
+                                            'UTF-8'
+                                        );
+
+                                    } catch (Exception $e) {
+
+                                        echo '-';
+
+                                    }
+
+                                } else {
+
+                                    echo '-';
+
+                                }
+
+                                ?>
+
+                            </td>
+
+                            <td>
+
+                                <form method="POST">
+
+                                    <input
+                                        type="hidden"
+                                        name="complaint_id"
+                                        value="<?php
+                                        echo htmlspecialchars(
+                                            (string) $complaint['_id'],
+                                            ENT_QUOTES,
+                                            'UTF-8'
+                                        );
+                                        ?>"
+                                    >
+
+                                    <select name="status">
+
+                                        <?php
+
+                                        $currentStatus =
+                                            $complaint['status'] ?? 'Pending';
+
+                                        ?>
+
+                                        <option
+                                            value="Pending"
+                                            <?php
+                                            echo $currentStatus === 'Pending'
+                                                ? 'selected'
+                                                : '';
+                                            ?>
+                                        >
+                                            Pending
+                                        </option>
+
+                                        <option
+                                            value="In Progress"
+                                            <?php
+                                            echo $currentStatus === 'In Progress'
+                                                ? 'selected'
+                                                : '';
+                                            ?>
+                                        >
+                                            In Progress
+                                        </option>
+
+                                        <option
+                                            value="Resolved"
+                                            <?php
+                                            echo $currentStatus === 'Resolved'
+                                                ? 'selected'
+                                                : '';
+                                            ?>
+                                        >
+                                            Resolved
+                                        </option>
+
+                                        <option
+                                            value="Rejected"
+                                            <?php
+                                            echo $currentStatus === 'Rejected'
+                                                ? 'selected'
+                                                : '';
+                                            ?>
+                                        >
+                                            Rejected
+                                        </option>
+
+                                    </select>
+
+                                    <button type="submit">
+                                        Update
+                                    </button>
+
+                                </form>
+
+                            </td>
+
+                        </tr>
+
+                    <?php endforeach; ?>
+
+                    </tbody>
+
+                </table>
+
+            </div>
 
         <?php endif; ?>
 
