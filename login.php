@@ -1,101 +1,77 @@
-```php
 <?php
 
-require_once __DIR__ . '/config/database.php';
+// IMPORTANT: session_start() must be before any HTML/output.
+session_start();
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+require_once __DIR__ . '/vendor/autoload.php';
+require_once __DIR__ . '/config/database.php';
 
 $message = "";
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
+// Handle login form submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
     $role = trim($_POST['role'] ?? '');
 
-    if (
-        $username == "" ||
-        $password == "" ||
-        $role == ""
-    ) {
+    if ($username === '' || $password === '' || $role === '') {
 
-        $message = "Please enter username, password and role.";
-
-    } elseif (
-        $role !== 'student' &&
-        $role !== 'warden'
-    ) {
-
-        $message = "Invalid login role.";
+        $message = "Please fill in all fields.";
 
     } else {
 
         try {
 
+            // Find the user by username and role
             $user = $users->findOne([
                 'username' => $username,
                 'role' => $role
             ]);
 
-            if (
-                !$user ||
-                !isset($user['password']) ||
-                !password_verify(
-                    $password,
-                    $user['password']
-                )
-            ) {
+            if ($user) {
 
-                $message = "Invalid username, password or role.";
+                $storedPassword = $user['password'] ?? '';
 
-            } else {
+                // Verify hashed password
+                if (password_verify($password, $storedPassword)) {
 
-                if ($role === 'student') {
-
-                    if (
-                        !isset($user['student_roll']) ||
-                        trim((string)$user['student_roll']) === ''
-                    ) {
-
-                        $message = "Student roll number is missing.";
-
-                    } else {
-
-                        session_regenerate_id(true);
-
-                        $_SESSION['user_id'] = (string)$user['_id'];
-                        $_SESSION['username'] = $user['username'];
-                        $_SESSION['role'] = $user['role'];
-                        $_SESSION['student_roll'] =
-                            trim((string)$user['student_roll']);
-
-                        header("Location: student/dashboard.php");
-                        exit;
-                    }
-
-                } elseif ($role === 'warden') {
-
-                    session_regenerate_id(true);
-
-                    $_SESSION['user_id'] = (string)$user['_id'];
+                    // Store login information in session
+                    $_SESSION['user_id'] = (string) $user['_id'];
                     $_SESSION['username'] = $user['username'];
                     $_SESSION['role'] = $user['role'];
 
-                    header("Location: warden/dashboard.php");
-                    exit;
+                    // Redirect according to role
+                    if ($role === 'student') {
+
+                        header('Location: student/dashboard.php');
+                        exit;
+
+                    } elseif ($role === 'warden') {
+
+                        header('Location: warden/dashboard.php');
+                        exit;
+
+                    }
+
+                } else {
+
+                    $message = "Invalid username or password.";
+
                 }
+
+            } else {
+
+                $message = "Invalid username, password, or role.";
+
             }
 
         } catch (Exception $e) {
 
-            $message = "Unable to process login.";
+            $message = "Login failed. Please try again.";
 
         }
-
     }
-
 }
 
 ?>
@@ -120,81 +96,74 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
 <body>
 
-<main class="container">
+<section class="card login-box">
 
-    <section class="card login-box">
+    <h1>Hostel Management System</h1>
 
-        <h1>Hostel Management System</h1>
+    <h2>Login</h2>
 
-        <h2>Login</h2>
+    <?php if ($message !== ""): ?>
 
-        <?php if ($message != ""): ?>
+        <p class="error">
+            <?php echo htmlspecialchars($message); ?>
+        </p>
 
-            <p class="error">
+    <?php endif; ?>
 
-                <?php echo htmlspecialchars($message); ?>
+    <form method="POST">
 
-            </p>
+        <label for="username">Username</label>
 
-        <?php endif; ?>
+        <input
+            type="text"
+            id="username"
+            name="username"
+            autocomplete="username"
+            required
+        >
 
-        <form method="POST">
+        <label for="password">Password</label>
 
-            <label>Username</label>
+        <input
+            type="password"
+            id="password"
+            name="password"
+            autocomplete="current-password"
+            required
+        >
 
-            <input
-                type="text"
-                name="username"
-                autocomplete="username"
-                required
-            >
+        <label for="role">Login As</label>
 
-            <label>Password</label>
+        <select
+            id="role"
+            name="role"
+            required
+        >
 
-            <input
-                type="password"
-                name="password"
-                autocomplete="current-password"
-                required
-            >
+            <option value="">
+                Select Role
+            </option>
 
-            <label>Login As</label>
+            <option value="student">
+                Student
+            </option>
 
-            <select name="role" required>
+            <option value="warden">
+                Warden
+            </option>
 
-                <option value="">
-                    Select Role
-                </option>
+        </select>
 
-                <option value="student">
-                    Student
-                </option>
+        <button type="submit">
+            Login
+        </button>
 
-                <option value="warden">
-                    Warden
-                </option>
+    </form>
 
-            </select>
+</section>
 
-            <button type="submit">
-                Login
-            </button>
-
-        </form>
-
-    </section>
-
-</main>
-
-<footer>
-
-    <p>© 2026 Hostel Management System</p>
-
-</footer>
-
-<script src="js/script.js"></script>
+<p>© 2026 Hostel Management System</p>
 
 </body>
 
 </html>
-```
