@@ -1,41 +1,44 @@
 <?php
 
 require_once __DIR__ . '/../config/auth.php';
+require_once __DIR__ . '/../config/database.php';
 
 checkLogin('warden');
 
-require_once __DIR__ . '/../config/database.php';
+/*
+ * Count records for the warden dashboard.
+ */
 
-$studentCount = $students->countDocuments();
+try {
 
-$roomCount = $rooms->countDocuments();
+    $studentCount = $students->countDocuments();
 
-$staffCount = $staff->countDocuments();
+    $roomCount = $rooms->countDocuments();
 
-$complaintCount = $complaints->countDocuments();
+    $complaintCount = $complaints->countDocuments([
+        'status' => 'Pending'
+    ]);
 
-$noticeCount = $notices->countDocuments();
+    /*
+     * $staff may not exist in older database.php files.
+     * Check that it exists before using it.
+     */
+    if (isset($staff) && $staff !== null) {
 
-$foodCount = $food->countDocuments();
+        $staffCount = $staff->countDocuments();
 
-$occupiedCount = $students->countDocuments([
-    'room_no' => [
-        '$exists' => true,
-        '$ne' => ''
-    ]
-]);
+    } else {
 
-$availableCount = 0;
+        $staffCount = 0;
 
-$roomList = $rooms->find()->toArray();
+    }
 
-foreach ($roomList as $room) {
+} catch (Exception $e) {
 
-    $capacity = (int)($room['capacity'] ?? 0);
-    $occupied = (int)($room['occupied'] ?? 0);
-
-    $availableCount += max(0, $capacity - $occupied);
-
+    $studentCount = 0;
+    $roomCount = 0;
+    $complaintCount = 0;
+    $staffCount = 0;
 }
 
 ?>
@@ -54,7 +57,10 @@ foreach ($roomList as $room) {
 
     <title>Warden Dashboard</title>
 
-    <link rel="stylesheet" href="../css/style.css">
+    <link
+        rel="stylesheet"
+        href="../css/style.css"
+    >
 
 </head>
 
@@ -70,15 +76,37 @@ foreach ($roomList as $room) {
 
             <div>
 
-                <a href="dashboard.php">Dashboard</a>
-                <a href="students.php">Students</a>
-                <a href="rooms.php">Rooms</a>
-                <a href="parents.php">Parents</a>
-                <a href="staff.php">Staff</a>
-                <a href="food.php">Food</a>
-                <a href="complaints.php">Complaints</a>
-                <a href="notices.php">Notices</a>
-                <a href="../logout.php">Logout</a>
+                <a href="dashboard.php">
+                    Dashboard
+                </a>
+
+                <a href="students.php">
+                    Students
+                </a>
+
+                <a href="rooms.php">
+                    Rooms
+                </a>
+
+                <a href="complaints.php">
+                    Complaints
+                </a>
+
+                <a href="notices.php">
+                    Notices
+                </a>
+
+                <a href="food.php">
+                    Food
+                </a>
+
+                <a href="staff.php">
+                    Staff
+                </a>
+
+                <a href="../logout.php">
+                    Logout
+                </a>
 
             </div>
 
@@ -95,7 +123,7 @@ foreach ($roomList as $room) {
         <h1>Warden Dashboard</h1>
 
         <p>
-            Hostel management overview
+            Welcome to the Hostel Management System.
         </p>
 
     </section>
@@ -104,105 +132,41 @@ foreach ($roomList as $room) {
 
         <div class="card">
 
-            <h3>Students</h3>
+            <h3>Total Students</h3>
 
             <h2>
                 <?php echo $studentCount; ?>
             </h2>
 
-            <a href="students.php">
-                Manage Students
-            </a>
-
         </div>
 
         <div class="card">
 
-            <h3>Rooms</h3>
+            <h3>Total Rooms</h3>
 
             <h2>
                 <?php echo $roomCount; ?>
             </h2>
 
-            <a href="rooms.php">
-                Manage Rooms
-            </a>
-
         </div>
 
         <div class="card">
 
-            <h3>Occupied Beds</h3>
-
-            <h2>
-                <?php echo $occupiedCount; ?>
-            </h2>
-
-        </div>
-
-        <div class="card">
-
-            <h3>Available Beds</h3>
-
-            <h2>
-                <?php echo $availableCount; ?>
-            </h2>
-
-        </div>
-
-        <div class="card">
-
-            <h3>Staff</h3>
-
-            <h2>
-                <?php echo $staffCount; ?>
-            </h2>
-
-            <a href="staff.php">
-                Manage Staff
-            </a>
-
-        </div>
-
-        <div class="card">
-
-            <h3>Complaints</h3>
+            <h3>Pending Complaints</h3>
 
             <h2>
                 <?php echo $complaintCount; ?>
             </h2>
 
-            <a href="complaints.php">
-                View Complaints
-            </a>
-
         </div>
 
         <div class="card">
 
-            <h3>Notices</h3>
+            <h3>Total Staff</h3>
 
             <h2>
-                <?php echo $noticeCount; ?>
+                <?php echo $staffCount; ?>
             </h2>
-
-            <a href="notices.php">
-                Manage Notices
-            </a>
-
-        </div>
-
-        <div class="card">
-
-            <h3>Food Menu</h3>
-
-            <h2>
-                <?php echo $foodCount; ?>
-            </h2>
-
-            <a href="food.php">
-                Manage Food
-            </a>
 
         </div>
 
@@ -214,7 +178,7 @@ foreach ($roomList as $room) {
 
         <p>
             <a href="students.php">
-                Add Student
+                Manage Students
             </a>
         </p>
 
@@ -225,20 +189,26 @@ foreach ($roomList as $room) {
         </p>
 
         <p>
-            <a href="staff.php">
-                Add Staff
-            </a>
-        </p>
-
-        <p>
-            <a href="food.php">
-                Update Food Menu
+            <a href="complaints.php">
+                View Complaints
             </a>
         </p>
 
         <p>
             <a href="notices.php">
-                Publish Notice
+                Manage Notices
+            </a>
+        </p>
+
+        <p>
+            <a href="food.php">
+                Manage Food Menu
+            </a>
+        </p>
+
+        <p>
+            <a href="staff.php">
+                Manage Staff
             </a>
         </p>
 
@@ -248,7 +218,9 @@ foreach ($roomList as $room) {
 
 <footer>
 
-    <p>© 2026 Hostel Management System</p>
+    <p>
+        © 2026 Hostel Management System
+    </p>
 
 </footer>
 
