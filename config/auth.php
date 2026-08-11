@@ -1,33 +1,14 @@
-```php
 <?php
 
-function checkLogin($role)
-{
-    
-
-    if (session_status() === PHP_SESSION_NONE) {
-
-        session_start();
-
-    }
-
-    if (!isset($_SESSION['user_id'])) {
-
-        header("Location: ../login.php");
-        exit;
-
-    }
-
-    if (
-        !isset($_SESSION['role']) ||
-        $_SESSION['role'] !== $role
-    ) {
-
-        header("Location: ../login.php");
-        exit;
-
-    }
+// Start the session only if it has not already been started.
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
 }
 
-?>
-```
+// Check whether the user is logged in.
+if (!isset($_SESSION['user_id'])) {
+
+    // Redirect to the login page.
+    header('Location: ../login.php');
+    exit;
+}
