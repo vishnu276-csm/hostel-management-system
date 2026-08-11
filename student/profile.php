@@ -1,24 +1,33 @@
-```php
 <?php
 
 require_once __DIR__ . '/../config/auth.php';
-
-checkLogin('student');
-
 require_once __DIR__ . '/../config/database.php';
 
-$studentRoll = $_SESSION['student_roll'] ?? '';
+// Make sure the user is logged in as a student.
+checkStudent();
 
-if ($studentRoll == "") {
+// Get the student's roll number from the session.
+$studentRoll = $_SESSION['roll_no'] ?? '';
+
+if ($studentRoll === '') {
     die("Student roll number is missing from the session.");
 }
 
-$student = $students->findOne([
-    'roll_no' => $studentRoll
-]);
+try {
 
-if (!$student) {
-    die("Student information not found.");
+    // Find the student using the roll number.
+    $student = $students->findOne([
+        'roll_no' => $studentRoll
+    ]);
+
+    if (!$student) {
+        die("Student information not found.");
+    }
+
+} catch (Exception $e) {
+
+    die("Unable to load student information.");
+
 }
 
 ?>
@@ -37,7 +46,10 @@ if (!$student) {
 
     <title>My Profile</title>
 
-    <link rel="stylesheet" href="../css/style.css">
+    <link
+        rel="stylesheet"
+        href="../css/style.css"
+    >
 
 </head>
 
@@ -54,11 +66,17 @@ if (!$student) {
             <div>
 
                 <a href="dashboard.php">Dashboard</a>
+
                 <a href="profile.php">Profile</a>
+
                 <a href="room.php">My Room</a>
+
                 <a href="food.php">Food</a>
+
                 <a href="complaints.php">Complaints</a>
+
                 <a href="notices.php">Notices</a>
+
                 <a href="../logout.php">Logout</a>
 
             </div>
@@ -68,6 +86,7 @@ if (!$student) {
     </div>
 
 </header>
+
 
 <main class="container">
 
@@ -80,6 +99,7 @@ if (!$student) {
         </p>
 
     </section>
+
 
     <section class="card">
 
@@ -117,10 +137,15 @@ if (!$student) {
 
         <p>
             <strong>Room Number:</strong>
-            <?php echo htmlspecialchars($student['room_no'] ?? 'Not Assigned'); ?>
+            <?php echo htmlspecialchars(
+                isset($student['room_no']) && $student['room_no'] !== ''
+                    ? (string)$student['room_no']
+                    : 'Not Assigned'
+            ); ?>
         </p>
 
     </section>
+
 
     <section class="card">
 
@@ -138,22 +163,27 @@ if (!$student) {
 
         <p>
             <strong>Address:</strong>
-            <?php echo nl2br(htmlspecialchars($student['address'] ?? '-')); ?>
+            <?php echo nl2br(
+                htmlspecialchars($student['address'] ?? '-')
+            ); ?>
         </p>
 
     </section>
 
 </main>
 
+
 <footer>
 
-    <p>© 2026 Hostel Management System</p>
+    <p>
+        © 2026 Hostel Management System
+    </p>
 
 </footer>
+
 
 <script src="../js/script.js"></script>
 
 </body>
 
 </html>
-```
