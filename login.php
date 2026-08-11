@@ -1,6 +1,6 @@
 <?php
 
-// IMPORTANT: session_start() must be before any HTML/output.
+// Start session before any HTML/output
 session_start();
 
 require_once __DIR__ . '/vendor/autoload.php';
@@ -34,6 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'role' => $role
             ]);
 
+            // User does not exist
             if (!$user) {
 
                 $message = "Invalid username, password, or role.";
@@ -57,12 +58,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     /*
                      * STUDENT LOGIN
                      *
-                     * Find the student's profile using the username.
+                     * Find student profile using user_id.
                      */
                     if ($role === 'student') {
 
                         $student = $students->findOne([
-                            'username' => $username
+                            'user_id' => $user['_id']
                         ]);
 
                         if (!$student) {
@@ -99,8 +100,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         } catch (Exception $e) {
 
-            // Temporary detailed error for local debugging
-            $message = "Login failed: " . $e->getMessage();
+            // Do not expose database details publicly
+            $message = "Login failed. Please try again later.";
         }
     }
 }
@@ -202,6 +203,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <p>
         New student?
+
         <a href="register.php">
             Create Student Account
         </a>
