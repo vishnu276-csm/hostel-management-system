@@ -1,54 +1,154 @@
 <?php
 
 require_once __DIR__ . '/../config/auth.php';
-
-checkLogin('student');
-
 require_once __DIR__ . '/../config/database.php';
 
-$rollNo = $_SESSION['student_roll'] ?? '';
+/*
+ * Make sure the user is logged in as a student.
+ */
+checkStudent();
 
-if ($rollNo == '') {
-    die("Student information is missing.");
+/*
+ * Find the student's roll number from the session.
+ *
+ * Different versions of the login code may have stored
+ * different session names, so we support the current
+ * roll_no first and the older student_roll as fallback.
+ */
+$rollNo = $_SESSION['roll_no'] ?? '';
+
+if ($rollNo === '') {
+    $rollNo = $_SESSION['student_roll'] ?? '';
 }
 
-$student = $students->findOne([
-    'roll_no' => $rollNo
-]);
+/*
+ * Find the student record.
+ */
+$student = null;
 
+/*
+ * First try using roll number.
+ */
+if ($rollNo !== '') {
+
+    $student = $students->findOne([
+        'roll_no' => $rollNo
+    ]);
+}
+
+/*
+ * If roll number was not available, try student_id.
+ */
+if (!$student && !empty($_SESSION['student_id'])) {
+
+    try {
+
+        $student = $students->findOne([
+            '_id' => new MongoDB\BSON\ObjectId(
+                (string) $_SESSION['student_id']
+            )
+        ]);
+
+        /*
+         * Get the roll number from the student record.
+         */
+        if ($student && isset($student['roll_no'])) {
+            $rollNo = (string) $student['roll_no'];
+        }
+
+    } catch (Exception $e) {
+
+        $student = null;
+
+    }
+}
+
+/*
+ * If still not found, try username.
+ */
+if (!$student && !empty($_SESSION['username'])) {
+
+    $student = $students->findOne([
+        'username' => $_SESSION['username']
+    ]);
+
+    /*
+     * Get roll number from the student record.
+     */
+    if ($student && isset($student['roll_no'])) {
+        $rollNo = (string) $student['roll_no'];
+    }
+}
+
+/*
+ * No student could be identified.
+ */
 if (!$student) {
-    die("Student record not found.");
+    die("Student information is missing. Please logout and login again.");
 }
 
-$roomNo = trim($student['room_no'] ?? '');
+/*
+ * Make sure we have a roll number.
+ */
+if ($rollNo === '' && isset($student['roll_no'])) {
+    $rollNo = (string) $student['roll_no'];
+}
+
+if ($rollNo === '') {
+    die("Student roll number is missing.");
+}
+
+/*
+ * Get student's room number.
+ */
+$roomNo = trim(
+    (string) ($student['room_no'] ?? '')
+);
 
 $capacity = 0;
 $occupied = 0;
 $available = 0;
 $roommates = [];
 
-if ($roomNo != '') {
+/*
+ * If the student has a room assigned.
+ */
+if ($roomNo !== '') {
 
+    /*
+     * Find room information.
+     */
     $room = $rooms->findOne([
         'room_no' => $roomNo
     ]);
 
     if ($room) {
 
-        $capacity = (int)($room['capacity'] ?? 0);
+        $capacity = (int) (
+            $room['capacity'] ?? 0
+        );
 
     }
 
+    /*
+     * Count students in this room.
+     */
     $occupied = $students->countDocuments([
         'room_no' => $roomNo
     ]);
 
+    /*
+     * Calculate available spaces.
+     */
     $available = $capacity - $occupied;
 
     if ($available < 0) {
         $available = 0;
     }
 
+    /*
+     * Get other students in the same room.
+     */
     $roommates = $students->find(
         [
             'room_no' => $roomNo,
@@ -80,7 +180,10 @@ if ($roomNo != '') {
 
     <title>My Room</title>
 
-    <link rel="stylesheet" href="../css/style.css">
+    <link
+        rel="stylesheet"
+        href="../css/style.css"
+    >
 
 </head>
 
@@ -96,13 +199,33 @@ if ($roomNo != '') {
 
             <div>
 
-                <a href="dashboard.php">Dashboard</a>
-                <a href="profile.php">Profile</a>
-                <a href="room.php">My Room</a>
-                <a href="food.php">Food</a>
-                <a href="complaints.php">Complaints</a>
-                <a href="notices.php">Notices</a>
-                <a href="../logout.php">Logout</a>
+                <a href="dashboard.php">
+                    Dashboard
+                </a>
+
+                <a href="profile.php">
+                    Profile
+                </a>
+
+                <a href="room.php">
+                    My Room
+                </a>
+
+                <a href="food.php">
+                    Food
+                </a>
+
+                <a href="complaints.php">
+                    Complaints
+                </a>
+
+                <a href="notices.php">
+                    Notices
+                </a>
+
+                <a href="../logout.php">
+                    Logout
+                </a>
 
             </div>
 
@@ -124,7 +247,7 @@ if ($roomNo != '') {
 
     </section>
 
-    <?php if ($roomNo == ''): ?>
+    <?php if ($roomNo === ''): ?>
 
         <section class="card">
 
@@ -145,7 +268,15 @@ if ($roomNo != '') {
                 <h3>Student</h3>
 
                 <h2>
-                    <?php echo htmlspecialchars($student['name'] ?? '-'); ?>
+                    <?php
+                    echo htmlspecialchars(
+                        (string) (
+                            $student['name'] ?? '-'
+                        ),
+                        ENT_QUOTES,
+                        'UTF-8'
+                    );
+                    ?>
                 </h2>
 
             </div>
@@ -155,7 +286,13 @@ if ($roomNo != '') {
                 <h3>Roll Number</h3>
 
                 <h2>
-                    <?php echo htmlspecialchars($rollNo); ?>
+                    <?php
+                    echo htmlspecialchars(
+                        $rollNo,
+                        ENT_QUOTES,
+                        'UTF-8'
+                    );
+                    ?>
                 </h2>
 
             </div>
@@ -165,7 +302,13 @@ if ($roomNo != '') {
                 <h3>Room Number</h3>
 
                 <h2>
-                    <?php echo htmlspecialchars($roomNo); ?>
+                    <?php
+                    echo htmlspecialchars(
+                        $roomNo,
+                        ENT_QUOTES,
+                        'UTF-8'
+                    );
+                    ?>
                 </h2>
 
             </div>
@@ -210,38 +353,81 @@ if ($roomNo != '') {
 
                 <table>
 
-                    <tr>
+                    <thead>
 
-                        <th>Name</th>
-                        <th>Roll Number</th>
-                        <th>Course</th>
-                        <th>Year</th>
+                        <tr>
 
-                    </tr>
+                            <th>Name</th>
+
+                            <th>Roll Number</th>
+
+                            <th>Course</th>
+
+                            <th>Year</th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
 
                     <?php foreach ($roommates as $roommate): ?>
 
                         <tr>
 
                             <td>
-                                <?php echo htmlspecialchars($roommate['name'] ?? '-'); ?>
+                                <?php
+                                echo htmlspecialchars(
+                                    (string) (
+                                        $roommate['name'] ?? '-'
+                                    ),
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                );
+                                ?>
                             </td>
 
                             <td>
-                                <?php echo htmlspecialchars($roommate['roll_no'] ?? '-'); ?>
+                                <?php
+                                echo htmlspecialchars(
+                                    (string) (
+                                        $roommate['roll_no'] ?? '-'
+                                    ),
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                );
+                                ?>
                             </td>
 
                             <td>
-                                <?php echo htmlspecialchars($roommate['course'] ?? '-'); ?>
+                                <?php
+                                echo htmlspecialchars(
+                                    (string) (
+                                        $roommate['course'] ?? '-'
+                                    ),
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                );
+                                ?>
                             </td>
 
                             <td>
-                                <?php echo htmlspecialchars($roommate['year'] ?? '-'); ?>
+                                <?php
+                                echo htmlspecialchars(
+                                    (string) (
+                                        $roommate['year'] ?? '-'
+                                    ),
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                );
+                                ?>
                             </td>
 
                         </tr>
 
                     <?php endforeach; ?>
+
+                    </tbody>
 
                 </table>
 
@@ -261,7 +447,9 @@ if ($roomNo != '') {
 
 <footer>
 
-    <p>© 2026 Hostel Management System</p>
+    <p>
+        © 2026 Hostel Management System
+    </p>
 
 </footer>
 
