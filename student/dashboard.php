@@ -1,4 +1,3 @@
-```php
 <?php
 
 require_once __DIR__ . '/../config/auth.php';
@@ -7,12 +6,14 @@ checkLogin('student');
 
 require_once __DIR__ . '/../config/database.php';
 
-$studentRoll = $_SESSION['student_roll'] ?? '';
+// Get the student's roll number from the login session
+$studentRoll = $_SESSION['roll_no'] ?? '';
 
-if ($studentRoll == '') {
+if ($studentRoll === '') {
     die("Student roll number is missing from the session.");
 }
 
+// Find the student in MongoDB
 $student = $students->findOne([
     'roll_no' => $studentRoll
 ]);
@@ -24,29 +25,32 @@ if (!$student) {
 $roomCapacity = 0;
 $roomOccupied = 0;
 
+// Get student's room number
 $roomNo = trim($student['room_no'] ?? '');
 
-if ($roomNo != '') {
+if ($roomNo !== '') {
 
+    // Find room information
     $room = $rooms->findOne([
         'room_no' => $roomNo
     ]);
 
     if ($room) {
-
         $roomCapacity = (int)($room['capacity'] ?? 0);
-
     }
 
+    // Count students in the same room
     $roomOccupied = $students->countDocuments([
         'room_no' => $roomNo
     ]);
 }
 
+// Count student's complaints
 $complaintCount = $complaints->countDocuments([
     'student_roll' => $studentRoll
 ]);
 
+// Count notices
 $noticeCount = $notices->countDocuments();
 
 ?>
@@ -261,4 +265,3 @@ $noticeCount = $notices->countDocuments();
 </body>
 
 </html>
-```
